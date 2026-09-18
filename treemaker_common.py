@@ -521,7 +521,7 @@ def select_gen_fromZ(df):
     return df
 
 
-def define_gen_kinematics_4q(df):
+def define_gen_kinematics_4qW(df):
     df = df.Define("gen_quarks_W_tlv",
         "FCCAnalyses::MCParticle::get_tlv(gen_quarks_W)")
     df = df.Define("gen_q0_p4", "gen_quarks_W_tlv[0]")
@@ -552,6 +552,46 @@ def define_gen_kinematics_4q(df):
         df = df.Define(f"gen_{W}_pz", f"{src}.Pz()")
 
     # gen_WW_* names match the ℓνqq convention so define_beam_kinematics
+    # (gen_WW_m_minus_m_ee) and downstream resolution code reuse unchanged.
+    df = df.Define("gen_WW_m",               "WW_4q_gen.M()")
+    df = df.Define("gen_WW_m_minus_ecm",     "gen_WW_m - FCCAnalyses::WWFunctions::ECM")
+    df = df.Define("gen_WW_px",              "WW_4q_gen.Px()")
+    df = df.Define("gen_WW_py",              "WW_4q_gen.Py()")
+    df = df.Define("gen_WW_pz",              "WW_4q_gen.Pz()")
+    df = df.Define("gen_WW_p_imbalance_tot", "WW_4q_gen.P()")
+    return df
+
+def define_gen_kinematics_4qZ(df):
+    df = df.Define("gen_quarks_W_tlv",
+        "FCCAnalyses::MCParticle::get_tlv(gen_quarks_Z)")
+    df = df.Define("gen_q0_p4", "gen_quarks_W_tlv[0]")
+    df = df.Define("gen_q1_p4", "gen_quarks_W_tlv[1]")
+    df = df.Define("gen_q2_p4", "gen_quarks_W_tlv[2]")
+    df = df.Define("gen_q3_p4", "gen_quarks_W_tlv[3]")
+
+    # The two true W's (gen grouping): W1 = q0+q1, W2 = q2+q3. Quark masses kept.
+    df = df.Define("W1_gen", "FCCAnalyses::WWFunctions::sum_p4({gen_q0_p4, gen_q1_p4})")
+    df = df.Define("W2_gen", "FCCAnalyses::WWFunctions::sum_p4({gen_q2_p4, gen_q3_p4})")
+    df = df.Define("WW_4q_gen",
+        "FCCAnalyses::WWFunctions::sum_p4({gen_q0_p4, gen_q1_p4, gen_q2_p4, gen_q3_p4})")
+
+    # W-grouped gen quark 4-vectors ([0,1]=W1, [2,3]=W2)    ^`^t lets a downstream study
+    # form the TRUE and both WRONG pairings + any angular separation, vs ISR.
+    for i, src in [(0, "gen_q0_p4"), (1, "gen_q1_p4"), (2, "gen_q2_p4"), (3, "gen_q3_p4")]:
+        df = df.Define(f"gen_qW{i}_px", f"{src}.Px()")
+        df = df.Define(f"gen_qW{i}_py", f"{src}.Py()")
+        df = df.Define(f"gen_qW{i}_pz", f"{src}.Pz()")
+        df = df.Define(f"gen_qW{i}_e",  f"{src}.E()")
+
+    for W, src in [("W1", "W1_gen"), ("W2", "W2_gen")]:
+        df = df.Define(f"gen_{W}_m",  f"{src}.M()")
+        df = df.Define(f"gen_{W}_p",  f"{src}.P()")
+        df = df.Define(f"gen_{W}_pt", f"{src}.Pt()")
+        df = df.Define(f"gen_{W}_px", f"{src}.Px()")
+        df = df.Define(f"gen_{W}_py", f"{src}.Py()")
+        df = df.Define(f"gen_{W}_pz", f"{src}.Pz()")
+
+    # gen_WW_* names match the    ^d^s      qq convention so define_beam_kinematics
     # (gen_WW_m_minus_m_ee) and downstream resolution code reuse unchanged.
     df = df.Define("gen_WW_m",               "WW_4q_gen.M()")
     df = df.Define("gen_WW_m_minus_ecm",     "gen_WW_m - FCCAnalyses::WWFunctions::ECM")
@@ -744,18 +784,44 @@ def run_bw_pairing(df, with_truth=True):
     (signal only) the gen-truth correctness flag. No Minuit — pure arithmetic."""
     df = df.Define("bwpair",
         "FCCAnalyses::WWFunctions::bwPairing(jet1, jet2, jet3, jet4)")
-    df = df.Define("bwpair_pairing",   "bwpair.pairing")
-    df = df.Define("bwpair_gof_best",  "bwpair.gof_best")
-    df = df.Define("bwpair_prob_best", "bwpair.prob_best")
-    df = df.Define("bwpair_dgof",      "bwpair.dgof")
+    df = df.Define("bwpair_pairing_ZZ",   "bwpair.pairing_ZZ")
+    df = df.Define("bwpair_pairing_WW",   "bwpair.pairing_WW")
+    df = df.Define("bwpair_gof_best_WW",  "bwpair.gof_best_WW")
+    df = df.Define("bwpair_gof_best_ZZ",  "bwpair.gof_best_ZZ")
+    df = df.Define("bwpair_prob_best_WW", "bwpair.prob_best_WW")
+    df = df.Define("bwpair_prob_best_ZZ", "bwpair.prob_best_ZZ")
+    df = df.Define("bwpair_dgof_WW",      "bwpair.dgof_WW")
+    df = df.Define("bwpair_dgof_ZZ",      "bwpair.dgof_ZZ")
+    df = df.Define("bwpair_L_WW_best",      "bwpair.L_WW_best")
+    df = df.Define("bwpair_L_ZZ_best",      "bwpair.L_ZZ_best")
+    df = df.Define("bwpair_L_ZZ_WW_ratio",      "bwpair.L_ZZ_WW_ratio")
+    df = df.Define("bwpair_L_WW_ZZ_ratio",	"bwpair.L_WW_ZZ_ratio")
+    df = df.Define("bwpair_Wa_best_cosTheta",   "bwpair.Wa_best_cosTheta");
+    df = df.Define("bwpair_Wb_best_cosTheta",   "bwpair.Wb_best_cosTheta");
+    df = df.Define("bwpair_Wa_best_dPhi",   "bwpair.Wa_best_dPhi");
+    df = df.Define("bwpair_Wb_best_dPhi",   "bwpair.Wb_best_dPhi");
+    df = df.Define("bwpair_Za_best_cosTheta",   "bwpair.Za_best_cosTheta");
+    df = df.Define("bwpair_Zb_best_cosTheta",   "bwpair.Zb_best_cosTheta");
+    df = df.Define("bwpair_Za_best_dPhi",   "bwpair.Za_best_dPhi");
+    df = df.Define("bwpair_Zb_best_dPhi",   "bwpair.Zb_best_dPhi");
     for k in range(3):
-        df = df.Define(f"bwpair_gof{k}",  f"bwpair.gof[{k}]")
-        df = df.Define(f"bwpair_prob{k}", f"bwpair.prob[{k}]")
+        df = df.Define(f"bwpair_gof_WW{k}",  f"bwpair.gof_WW[{k}]")
+        df = df.Define(f"bwpair_gof_ZZ{k}",  f"bwpair.gof_ZZ[{k}]")
+        df = df.Define(f"bwpair_prob_WW{k}", f"bwpair.prob_WW[{k}]")
+        df = df.Define(f"bwpair_prob_ZZ{k}", f"bwpair.prob_ZZ[{k}]")
         df = df.Define(f"bwpair_ma{k}",   f"bwpair.m_a[{k}]")
         df = df.Define(f"bwpair_mb{k}",   f"bwpair.m_b[{k}]")
+        df = df.Define(f"bwpair_cosTheta_a{k}",   f"bwpair.cosTheta_a[{k}]")
+        df = df.Define(f"bwpair_cosTheta_b{k}",   f"bwpair.cosTheta_b[{k}]")
+        df = df.Define(f"bwpair_deltaPhi_a{k}",   f"bwpair.deltaPhi_a[{k}]")
+        df = df.Define(f"bwpair_deltaPhi_b{k}",   f"bwpair.deltaPhi_b[{k}]")
+        df = df.Define(f"bwpair_p_a{k}",   f"bwpair.p_a[{k}]")
+        df = df.Define(f"bwpair_p_b{k}",   f"bwpair.p_b[{k}]")
     if with_truth:
-        df = df.Define("bwpair_correct",
-            "(int)(gen_pairing_true >= 0 && bwpair.pairing == gen_pairing_true)")
+        df = df.Define("bwpair_correct_WW",
+            "(int)(gen_pairing_true >= 0 && bwpair.pairing_WW == gen_pairing_true)")
+        df = df.Define("bwpair_correct_ZZ",
+            "(int)(gen_pairing_true >= 0 && bwpair.pairing_ZZ == gen_pairing_true)")
     return df
 
 
